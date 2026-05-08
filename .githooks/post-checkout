@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PREVIOUS=${1:-}
+CURRENT=${2:-}
+
+if [[ -n "$PREVIOUS" && -n "$CURRENT" ]] &&
+  git diff --name-only "$PREVIOUS" "$CURRENT" | grep -q '^package-lock.json$'; then
+  npm install
+fi
