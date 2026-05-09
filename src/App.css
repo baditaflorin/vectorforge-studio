@@ -70,6 +70,10 @@
   gap: 8px;
 }
 
+.wrap {
+  flex-wrap: wrap;
+}
+
 .topbar-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -131,6 +135,13 @@
 .link-button:hover,
 .layer-row:hover {
   border-color: var(--line-strong);
+}
+
+.tool-button:disabled,
+.icon-button:disabled,
+.text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .text-button,

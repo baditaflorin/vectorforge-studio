@@ -25,6 +25,7 @@ flowchart LR
     Storage["IndexedDB Storage"]
     SVGIO["SVG Import/Export"]
     Palette["Lazy Palette Extraction"]
+    Worker["Comlink Geometry Worker"]
     Repo["Public GitHub Metadata"]
 
     Browser --> App
@@ -33,6 +34,7 @@ flowchart LR
     Editor --> Storage
     Editor --> SVGIO
     Editor --> Palette
+    Editor --> Worker
     App --> Repo
 ```
 

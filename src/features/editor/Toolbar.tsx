@@ -3,6 +3,7 @@ import {
   Download,
   FileInput,
   Image,
+  ImageDown,
   MousePointer2,
   PenTool,
   Redo2,
@@ -23,6 +24,7 @@ type Props = {
   onRedo: () => void;
   onSave: () => void;
   onExport: () => void;
+  onExportPng: () => void;
   onImportSvg: () => void;
   onImportPalette: () => void;
   onDelete: () => void;
@@ -45,6 +47,7 @@ export function Toolbar({
   onRedo,
   onSave,
   onExport,
+  onExportPng,
   onImportSvg,
   onImportPalette,
   onDelete,
@@ -111,6 +114,15 @@ export function Toolbar({
           onClick={onExport}
         >
           <Download size={19} />
+        </button>
+        <button
+          type="button"
+          className="tool-button"
+          aria-label="Export PNG"
+          title="Export PNG"
+          onClick={onExportPng}
+        >
+          <ImageDown size={19} />
         </button>
         <button
           type="button"

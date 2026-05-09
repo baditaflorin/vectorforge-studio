@@ -1,4 +1,4 @@
-const CACHE_NAME = "vectorforge-studio-v0.1.0";
+const CACHE_NAME = "vectorforge-studio-v0.2.0";
 const APP_SHELL = ["/vectorforge-studio/", "/vectorforge-studio/index.html"];
 
 self.addEventListener("install", (event) => {

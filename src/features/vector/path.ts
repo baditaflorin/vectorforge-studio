@@ -136,6 +136,37 @@ export function deleteElement(document: VectorDocument, elementId: string) {
   });
 }
 
+export function reorderElement(
+  document: VectorDocument,
+  elementId: string,
+  direction: "front" | "back" | "forward" | "backward",
+) {
+  const index = document.elements.findIndex(
+    (element) => element.id === elementId,
+  );
+  if (index < 0) {
+    return document;
+  }
+
+  const elements = [...document.elements];
+  const [element] = elements.splice(index, 1);
+  if (!element) {
+    return document;
+  }
+
+  if (direction === "front") {
+    elements.push(element);
+  } else if (direction === "back") {
+    elements.unshift(element);
+  } else if (direction === "forward") {
+    elements.splice(Math.min(elements.length, index + 1), 0, element);
+  } else {
+    elements.splice(Math.max(0, index - 1), 0, element);
+  }
+
+  return touchDocument({ ...document, elements });
+}
+
 export function duplicateElement(document: VectorDocument, elementId: string) {
   const element = document.elements.find(
     (candidate) => candidate.id === elementId,
@@ -208,6 +239,57 @@ export function updatePathNode(
   };
 }
 
+export function insertPathNodeAfter(
+  path: VectorPath,
+  nodeIndex: number,
+): VectorPath {
+  const nextIndex = nodeIndex + 1 < path.nodes.length ? nodeIndex + 1 : 0;
+  if (!path.closed && nodeIndex >= path.nodes.length - 1) {
+    return path;
+  }
+
+  const current = path.nodes[nodeIndex];
+  const next = path.nodes[nextIndex];
+  if (!current || !next) {
+    return path;
+  }
+
+  const split = splitCubic(
+    current.point,
+    current.out ?? current.point,
+    next.in ?? next.point,
+    next.point,
+  );
+  const nodes = path.nodes.map((node) => ({ ...node }));
+  nodes[nodeIndex] = { ...current, out: split.leftControl };
+  nodes[nextIndex] = { ...next, in: split.rightControl };
+  nodes.splice(nextIndex, 0, {
+    point: split.point,
+    in: split.leftHandle,
+    out: split.rightHandle,
+  });
+
+  return { ...path, nodes };
+}
+
+export function removePathNode(
+  path: VectorPath,
+  nodeIndex: number,
+): VectorPath {
+  if (path.nodes.length <= 2) {
+    return path;
+  }
+  return {
+    ...path,
+    nodes: path.nodes.filter((_, index) => index !== nodeIndex),
+    closed: path.closed && path.nodes.length - 1 > 2,
+  };
+}
+
+export function togglePathClosed(path: VectorPath): VectorPath {
+  return { ...path, closed: !path.closed };
+}
+
 export function elementBounds(element: VectorElement): Bounds {
   if (element.type === "rect") {
     return {
@@ -268,4 +350,28 @@ export function subtractPoints(a: Point, b: Point): Point {
 
 export function distance(a: Point, b: Point) {
   return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function midpoint(a: Point, b: Point): Point {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+  };
+}
+
+function splitCubic(a: Point, b: Point, c: Point, d: Point) {
+  const ab = midpoint(a, b);
+  const bc = midpoint(b, c);
+  const cd = midpoint(c, d);
+  const abbc = midpoint(ab, bc);
+  const bccd = midpoint(bc, cd);
+  const point = midpoint(abbc, bccd);
+
+  return {
+    leftControl: ab,
+    leftHandle: abbc,
+    point,
+    rightHandle: bccd,
+    rightControl: cd,
+  };
 }

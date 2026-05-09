@@ -5,16 +5,18 @@ import {
   fetchLatestCommit,
   fetchRepositoryInfo,
 } from "../repository/repository";
+import type { DocumentGeometry } from "../vector/geometry";
 import type { VectorDocument } from "../vector/model";
 
 type Props = {
   document: VectorDocument;
   zoom: number;
+  geometry: DocumentGeometry | null;
 };
 
 const capabilities = detectCapabilities();
 
-export function StatusBar({ document, zoom }: Props) {
+export function StatusBar({ document, zoom, geometry }: Props) {
   const repo = useQuery({
     queryKey: ["repository"],
     queryFn: fetchRepositoryInfo,
@@ -46,9 +48,17 @@ export function StatusBar({ document, zoom }: Props) {
             : "GitHub metadata pending"}
         </span>
         <span className="status-item">{Math.round(zoom * 100)}%</span>
+        <span className="status-item">
+          {geometry
+            ? `${Math.round(geometry.totalLength)} px paths`
+            : "geometry pending"}
+        </span>
       </div>
       <div className="status-group">
-        <span className="status-item">{document.elements.length} elements</span>
+        <span className="status-item">
+          {geometry?.elementCount ?? document.elements.length} elements
+        </span>
+        <span className="status-item">{geometry?.nodeCount ?? 0} nodes</span>
         <span className="status-item">
           IndexedDB {capabilities.indexedDb ? "ready" : "off"}
         </span>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildInfo } from "../../config/build";
+import { useGeometryStats } from "../geometry/useGeometryStats";
 import { extractPalette } from "../palette/extractPalette";
 import {
   deleteStoredDocument,
@@ -12,6 +13,10 @@ import { createDefaultDocument, touchDocument } from "../vector/model";
 import {
   deleteElement,
   duplicateElement,
+  insertPathNodeAfter,
+  removePathNode,
+  reorderElement,
+  togglePathClosed,
   updateElement,
   updateStyle,
 } from "../vector/path";
@@ -47,6 +52,7 @@ export function EditorApp() {
   const redoStack = useRef<VectorDocument[]>([]);
   const svgInputRef = useRef<HTMLInputElement | null>(null);
   const paletteInputRef = useRef<HTMLInputElement | null>(null);
+  const geometry = useGeometryStats(document);
 
   const selectedElement = useMemo(
     () =>
@@ -159,6 +165,17 @@ export function EditorApp() {
     showNotice("success", "SVG exported.");
   }
 
+  async function handleExportPng() {
+    try {
+      const png = await renderDocumentToPng(document);
+      const filename = `${document.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "vectorforge"}.png`;
+      downloadBlob(filename, png);
+      showNotice("success", "PNG exported.");
+    } catch {
+      showNotice("error", "PNG export failed.");
+    }
+  }
+
   async function handleSvgImport(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -243,6 +260,67 @@ export function EditorApp() {
     setSelectedElementId(next.elements.at(-1)?.id ?? selectedElementId);
   }
 
+  function handleReorder(direction: "front" | "back" | "forward" | "backward") {
+    if (!selectedElementId) {
+      return;
+    }
+    commitDocument(reorderElement(document, selectedElementId, direction));
+    setSelectedElementId(selectedElementId);
+  }
+
+  function handleInsertNode() {
+    if (selectedElement?.type !== "path") {
+      return;
+    }
+    const fallbackIndex = selectedElement.closed
+      ? selectedElement.nodes.length - 1
+      : Math.max(0, selectedElement.nodes.length - 2);
+    const nodeIndex = selectedNode?.nodeIndex ?? fallbackIndex;
+    const splitIndex =
+      !selectedElement.closed && nodeIndex >= selectedElement.nodes.length - 1
+        ? Math.max(0, nodeIndex - 1)
+        : nodeIndex;
+    const next = updateElement(document, selectedElement.id, (element) => {
+      if (element.type !== "path") {
+        return element;
+      }
+      return insertPathNodeAfter(element, splitIndex);
+    });
+    commitDocument(next);
+    setSelectedNode({
+      elementId: selectedElement.id,
+      nodeIndex: splitIndex + 1,
+      part: "point",
+    });
+  }
+
+  function handleDeleteNode() {
+    if (selectedElement?.type !== "path" || !selectedNode) {
+      return;
+    }
+    const next = updateElement(document, selectedElement.id, (element) => {
+      if (element.type !== "path") {
+        return element;
+      }
+      return removePathNode(element, selectedNode.nodeIndex);
+    });
+    commitDocument(next);
+    setSelectedNode(null);
+  }
+
+  function handleToggleClosed() {
+    if (selectedElement?.type !== "path") {
+      return;
+    }
+    const next = updateElement(document, selectedElement.id, (element) => {
+      if (element.type !== "path") {
+        return element;
+      }
+      return togglePathClosed(element);
+    });
+    commitDocument(next);
+  }
+
   function handleApplySwatch(color: string) {
     if (!selectedElementId) {
       return;
@@ -266,6 +344,62 @@ export function EditorApp() {
     showNotice("success", "Removed local save.");
   }
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.matches("input, textarea, select, [contenteditable='true']")
+      ) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const modifier = event.metaKey || event.ctrlKey;
+
+      if (modifier && key === "z" && event.shiftKey) {
+        event.preventDefault();
+        handleRedo();
+      } else if (modifier && key === "z") {
+        event.preventDefault();
+        handleUndo();
+      } else if (modifier && key === "s") {
+        event.preventDefault();
+        handleSave();
+      } else if (modifier && key === "d") {
+        event.preventDefault();
+        handleDuplicate();
+      } else if (key === "delete" || key === "backspace") {
+        event.preventDefault();
+        if (selectedNode) {
+          handleDeleteNode();
+        } else {
+          handleDeleteSelected();
+        }
+      } else if (key === "escape") {
+        setPenDraft(null);
+        setShapeDraft(null);
+        setSelectedNode(null);
+      } else if (!modifier && key === "v") {
+        setTool("select");
+      } else if (!modifier && key === "a") {
+        setTool("node");
+      } else if (!modifier && key === "p") {
+        setTool("pen");
+      } else if (!modifier && key === "r") {
+        setTool("rect");
+      } else if (!modifier && key === "e") {
+        setTool("ellipse");
+      } else if (!modifier && key === "]") {
+        handleReorder("forward");
+      } else if (!modifier && key === "[") {
+        handleReorder("backward");
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
+
   return (
     <div className="app-shell">
       <TopBar onNewDocument={handleNewDocument} onLoadDemo={handleLoadDemo} />
@@ -282,6 +416,7 @@ export function EditorApp() {
           onRedo={handleRedo}
           onSave={handleSave}
           onExport={handleExport}
+          onExportPng={handleExportPng}
           onImportSvg={() => svgInputRef.current?.click()}
           onImportPalette={() => paletteInputRef.current?.click()}
           onDelete={handleDeleteSelected}
@@ -306,11 +441,19 @@ export function EditorApp() {
           <Inspector
             selectedElement={selectedElement}
             activeTool={tool}
+            selectedNode={selectedNode}
             palette={palette}
             zoom={zoom}
             onStyleChange={handleStyleChange}
             onRename={handleRename}
             onDuplicate={handleDuplicate}
+            onInsertNode={handleInsertNode}
+            onDeleteNode={handleDeleteNode}
+            onToggleClosed={handleToggleClosed}
+            onBringForward={() => handleReorder("forward")}
+            onSendBackward={() => handleReorder("backward")}
+            onBringToFront={() => handleReorder("front")}
+            onSendToBack={() => handleReorder("back")}
             onZoomChange={setZoom}
             onApplySwatch={handleApplySwatch}
           />
@@ -327,7 +470,7 @@ export function EditorApp() {
           />
         </aside>
       </main>
-      <StatusBar document={document} zoom={zoom} />
+      <StatusBar document={document} zoom={zoom} geometry={geometry} />
       {notice ? (
         <div
           className="toast"
@@ -410,10 +553,45 @@ function LocalDocuments({
 
 function downloadText(filename: string, text: string, type: string) {
   const blob = new Blob([text], { type });
+  downloadBlob(filename, blob);
+}
+
+function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const anchor = window.document.createElement("a");
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+async function renderDocumentToPng(document: VectorDocument) {
+  const svg = exportDocumentToSvg(document);
+  const svgBlob = new Blob([svg], { type: "image/svg+xml" });
+  const url = URL.createObjectURL(svgBlob);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = url;
+  await image.decode();
+
+  const canvas = window.document.createElement("canvas");
+  canvas.width = document.width;
+  canvas.height = document.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    URL.revokeObjectURL(url);
+    throw new Error("Canvas is unavailable.");
+  }
+  context.drawImage(image, 0, 0);
+  URL.revokeObjectURL(url);
+
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error("Canvas export failed."));
+      }
+    }, "image/png");
+  });
 }

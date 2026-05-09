@@ -1,15 +1,33 @@
-import { Copy, Minus, Plus } from "lucide-react";
+import {
+  BringToFront,
+  Copy,
+  FolderDown,
+  FolderUp,
+  Minus,
+  Plus,
+  SendToBack,
+  Spline,
+  Trash2,
+} from "lucide-react";
 import type { ElementStyle, VectorElement } from "../vector/model";
-import type { Tool } from "./types";
+import type { SelectedNode, Tool } from "./types";
 
 type Props = {
   selectedElement: VectorElement | null;
   activeTool: Tool;
+  selectedNode: SelectedNode | null;
   palette: string[];
   zoom: number;
   onStyleChange: (style: Partial<ElementStyle>) => void;
   onRename: (name: string) => void;
   onDuplicate: () => void;
+  onInsertNode: () => void;
+  onDeleteNode: () => void;
+  onToggleClosed: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onBringToFront: () => void;
+  onSendToBack: () => void;
   onZoomChange: (zoom: number) => void;
   onApplySwatch: (color: string) => void;
 };
@@ -17,11 +35,19 @@ type Props = {
 export function Inspector({
   selectedElement,
   activeTool,
+  selectedNode,
   palette,
   zoom,
   onStyleChange,
   onRename,
   onDuplicate,
+  onInsertNode,
+  onDeleteNode,
+  onToggleClosed,
+  onBringForward,
+  onSendBackward,
+  onBringToFront,
+  onSendToBack,
   onZoomChange,
   onApplySwatch,
 }: Props) {
@@ -96,6 +122,79 @@ export function Inspector({
           <div className="empty-state">Select artwork to edit appearance.</div>
         )}
       </section>
+
+      {selectedElement ? (
+        <section className="panel-section">
+          <h2 className="panel-title">Arrange</h2>
+          <div className="inline-actions wrap">
+            <button
+              type="button"
+              className="text-button"
+              onClick={onBringForward}
+            >
+              <FolderUp size={15} /> Forward
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={onSendBackward}
+            >
+              <FolderDown size={15} /> Backward
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={onBringToFront}
+            >
+              <BringToFront size={15} /> Front
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={onSendToBack}
+            >
+              <SendToBack size={15} /> Back
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {selectedElement?.type === "path" ? (
+        <section className="panel-section">
+          <h2 className="panel-title">Path</h2>
+          <div className="inline-actions wrap">
+            <button
+              type="button"
+              className="text-button"
+              onClick={onInsertNode}
+            >
+              <Plus size={15} /> Add node
+            </button>
+            <button
+              type="button"
+              className="text-button danger"
+              disabled={!selectedNode || selectedElement.nodes.length <= 2}
+              onClick={onDeleteNode}
+            >
+              <Trash2 size={15} /> Delete node
+            </button>
+            <button
+              type="button"
+              className="text-button"
+              onClick={onToggleClosed}
+            >
+              <Spline size={15} />{" "}
+              {selectedElement.closed ? "Open path" : "Close path"}
+            </button>
+          </div>
+          <p className="fine-print">
+            {selectedElement.nodes.length} anchors.{" "}
+            {selectedNode
+              ? `Node ${selectedNode.nodeIndex + 1} selected.`
+              : "Select a node to delete it."}
+          </p>
+        </section>
+      ) : null}
 
       <section className="panel-section">
         <h2 className="panel-title">Viewport</h2>

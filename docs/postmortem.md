@@ -2,14 +2,16 @@
 
 ## What was built
 
-VectorForge Studio v0.1.0 is a static, local-first vector editor published at:
+VectorForge Studio v0.2.0 is a static, local-first vector editor published at:
 
 https://baditaflorin.github.io/vectorforge-studio/
 
 The app includes an SVG artboard, select/node/pen/rectangle/ellipse tools,
-Bezier handles, SVG import/export, IndexedDB local saves, lazy ColorThief
-palette extraction, PWA files, public GitHub metadata, visible version/commit,
-and prominent GitHub star and PayPal support links.
+Bezier handles, add/delete node controls, open/closed path toggling, layer
+ordering, SVG import/export, PNG export, IndexedDB local saves, lazy ColorThief
+palette extraction, worker-backed geometry stats, keyboard shortcuts, PWA
+files, public GitHub metadata, visible version/commit, and prominent GitHub
+star and PayPal support links.
 
 ## Was Mode A correct?
 
@@ -24,6 +26,7 @@ static assets covered the release.
 - The editor smoke path runs against both local static preview and the live URL.
 - IndexedDB is enough for local document persistence.
 - Lazy palette extraction kept the initial JS payload around 100KB gzip.
+- Worker-backed geometry kept document metrics out of the React render path.
 - Showing commit through the public GitHub API avoids unstable asset hashes.
 
 ## What did not work

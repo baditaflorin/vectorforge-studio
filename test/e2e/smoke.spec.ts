@@ -14,8 +14,13 @@ test("loads the editor and creates a rectangle", async ({ page }) => {
     "href",
     "https://www.paypal.com/paypalme/florinbadita",
   );
-  await expect(page.getByText(/v0\.1\.0/)).toBeVisible();
+  await expect(page.getByText(/v0\.2\.0/)).toBeVisible();
   await expect(page.getByText(/commit/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export PNG" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit nodes and handles" }).click();
+  await page.getByRole("button", { name: /add node/i }).click();
+  await expect(page.getByText(/4 anchors/i)).toBeVisible();
 
   await page.getByRole("button", { name: "Rectangle" }).click();
   const artboard = page.locator("svg.artboard");

@@ -30,9 +30,14 @@ editing without a subscription or runtime backend.
 
 - SVG artboard with select, node, pen, rectangle, and ellipse tools.
 - Bezier anchors and handles for path editing.
+- Add/delete path nodes and toggle open/closed paths.
+- Layer ordering controls for front/back movement.
 - SVG import/export.
+- PNG export rendered from the SVG document.
 - IndexedDB local saves and offline-friendly PWA shell.
 - Lazy ColorThief palette extraction from raster images.
+- Comlink Web Worker geometry stats for element, node, and path length metrics.
+- Keyboard shortcuts for tools, save, duplicate, undo/redo, delete, and layer order.
 - Public GitHub metadata, app version, and live commit shown in the status bar.
 - GitHub and PayPal links visible in the published app header.
 
