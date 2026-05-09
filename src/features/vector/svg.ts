@@ -7,12 +7,7 @@ import type {
   VectorPath,
 } from "./model";
 import { createId } from "../../shared/id";
-import {
-  createDefaultDocument,
-  defaultStyle,
-  nowIso,
-  vectorDocumentSchema,
-} from "./model";
+import { defaultStyle, nowIso, vectorDocumentSchema } from "./model";
 import { createPath, pathToD } from "./path";
 
 const commandPattern = /[a-zA-Z]|[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?/gi;
@@ -273,8 +268,4 @@ function escapeXml(value: string) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
-}
-
-export function demoSvgText() {
-  return exportDocumentToSvg(createDefaultDocument());
 }

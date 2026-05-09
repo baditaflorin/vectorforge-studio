@@ -19,3 +19,23 @@ Status key: Green = works end-to-end. Yellow = partial. Red = missing but needed
 | API/curl output                |                  Gray | Mode A has no API.                                        | Out of scope.                                             |
 
 Before counts: Green 3, Yellow 1, Red 6, Gray 3.
+
+## After Phase 3
+
+| Output pathway                 | Status after Phase 3 | Evidence                                                                                    |
+| ------------------------------ | -------------------: | ------------------------------------------------------------------------------------------- |
+| SVG download                   |                Green | Toolbar export uses shared filename/download utilities.                                     |
+| PNG download                   |                Green | Canvas-backed PNG exporter returns typed failures instead of silent generic errors.         |
+| IndexedDB save                 |                Green | Save and autosave persist the active document and refresh the local save list.              |
+| Downloadable native state file |                Green | Project panel exports versioned `.vectorforge.json` with document, palette, and settings.   |
+| Native state file import       |                Green | Import router restores native project files from picker, drop, paste, and share URLs.       |
+| Copy SVG to clipboard          |                Green | Project panel copies exported SVG with visible success/error feedback.                      |
+| Copy share URL                 |                Green | Project panel copies hash-encoded project URLs and blocks oversized payloads with a notice. |
+| Print/PDF                      |                Green | Project panel invokes print and print CSS strips editing chrome.                            |
+| Screenshot export              |                Green | PNG export is documented as artboard image export, not full UI screenshot capture.          |
+| JSON export                    |                Green | Native project JSON is schema-versioned and round-trip tested.                              |
+| Code export                    |                 Gray | Out of scope.                                                                               |
+| Embed code                     |                 Gray | Out of scope.                                                                               |
+| API/curl output                |                 Gray | Mode A has no API.                                                                          |
+
+After counts: Green 10, Yellow 0, Red 0, Gray 3.

@@ -1,13 +1,46 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildInfo } from "../../config/build";
-import { useGeometryStats } from "../geometry/useGeometryStats";
-import { extractPalette } from "../palette/extractPalette";
 import {
+  copyTextToClipboard,
+  createProjectShareUrl,
+  downloadBlob,
+  downloadText,
+  parseProjectShareHash,
+  pngFilename,
+  projectFilename,
+  renderDocumentToPng,
+  svgFilename,
+} from "../export/exporters";
+import { useGeometryStats } from "../geometry/useGeometryStats";
+import {
+  importClipboardItems,
+  importFiles,
+  readClipboard,
+  type ImportResult,
+} from "../import/importRouter";
+import {
+  parseProjectFile,
+  serializeProjectFile,
+  type ProjectState,
+} from "../project/projectFile";
+import {
+  defaultEditorSettings,
+  loadSettings,
+  saveSettings,
+  type EditorSettings,
+} from "../settings/settings";
+import {
+  clearStoredDocuments,
   deleteStoredDocument,
   listDocuments,
+  loadDocument,
   saveDocument,
   supportsDocumentStorage,
 } from "../storage/documents";
+import {
+  clearLastDocumentId,
+  getLastDocumentId,
+  setLastDocumentId,
+} from "../storage/session";
 import type { ElementStyle, VectorDocument } from "../vector/model";
 import { createDefaultDocument, touchDocument } from "../vector/model";
 import {
@@ -20,15 +53,18 @@ import {
   updateElement,
   updateStyle,
 } from "../vector/path";
-import { exportDocumentToSvg, parseSvgDocument } from "../vector/svg";
+import { exportDocumentToSvg } from "../vector/svg";
 import { EditorCanvas } from "./EditorCanvas";
 import { Inspector } from "./Inspector";
 import { LayersPanel } from "./LayersPanel";
+import { ProjectPanel } from "./ProjectPanel";
 import { StatusBar } from "./StatusBar";
 import { Toolbar } from "./Toolbar";
 import { TopBar } from "./TopBar";
 import type { Notice, SelectedNode, ShapeDraft, Tool } from "./types";
 import type { VectorPath } from "../vector/model";
+
+const defaultPalette = ["#2563eb", "#f59e0b", "#16a34a", "#ef4444"];
 
 export function EditorApp() {
   const [document, setDocument] = useState(() => createDefaultDocument());
@@ -38,20 +74,19 @@ export function EditorApp() {
   );
   const [selectedNode, setSelectedNode] = useState<SelectedNode | null>(null);
   const [tool, setTool] = useState<Tool>("select");
-  const [zoom, setZoom] = useState(0.78);
-  const [palette, setPalette] = useState([
-    "#2563eb",
-    "#f59e0b",
-    "#16a34a",
-    "#ef4444",
-  ]);
+  const [settings, setSettings] = useState<EditorSettings>(() =>
+    loadSettings(),
+  );
+  const [palette, setPalette] = useState(defaultPalette);
   const [penDraft, setPenDraft] = useState<VectorPath | null>(null);
   const [shapeDraft, setShapeDraft] = useState<ShapeDraft | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const undoStack = useRef<VectorDocument[]>([]);
   const redoStack = useRef<VectorDocument[]>([]);
-  const svgInputRef = useRef<HTMLInputElement | null>(null);
-  const paletteInputRef = useRef<HTMLInputElement | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const geometry = useGeometryStats(document);
 
   const selectedElement = useMemo(
@@ -60,6 +95,10 @@ export function EditorApp() {
       null,
     [document.elements, selectedElementId],
   );
+
+  const showNotice = useCallback((tone: Notice["tone"], message: string) => {
+    setNotice({ tone, message });
+  }, []);
 
   const refreshStoredDocuments = useCallback(async () => {
     if (!supportsDocumentStorage()) {
@@ -70,27 +109,117 @@ export function EditorApp() {
     } catch {
       showNotice("error", "Could not read local documents.");
     }
+  }, [showNotice]);
+
+  const bumpHistoryVersion = useCallback(() => {
+    setHistoryVersion((version) => version + 1);
   }, []);
 
-  function showNotice(tone: Notice["tone"], message: string) {
-    setNotice({ tone, message });
+  const resetHistory = useCallback(() => {
+    undoStack.current = [];
+    redoStack.current = [];
+    bumpHistoryVersion();
+  }, [bumpHistoryVersion]);
+
+  const selectFirstElement = useCallback((nextDocument: VectorDocument) => {
+    setSelectedElementId(nextDocument.elements[0]?.id ?? null);
+    setSelectedNode(null);
+  }, []);
+
+  const applySettings = useCallback((nextSettings: EditorSettings) => {
+    const parsed = { ...defaultEditorSettings, ...nextSettings };
+    setSettings(parsed);
+    saveSettings(parsed);
+  }, []);
+
+  function currentProjectState(): ProjectState {
+    return { document, palette, settings };
   }
+
+  const applyProjectState = useCallback(
+    (state: ProjectState, message: string) => {
+      setDocument(touchDocument(state.document));
+      setPalette(state.palette.length ? state.palette : defaultPalette);
+      applySettings(state.settings);
+      selectFirstElement(state.document);
+      resetHistory();
+      setLastDocumentId(state.document.id);
+      showNotice("success", message);
+    },
+    [applySettings, resetHistory, selectFirstElement, showNotice],
+  );
+
+  useEffect(() => {
+    if (initialLoadComplete) {
+      return;
+    }
+
+    async function restoreInitialState() {
+      const shared = parseProjectShareHash();
+      if (!shared.ok) {
+        showNotice("error", shared.message);
+      } else if (shared.value) {
+        const project = parseProjectFile(shared.value);
+        if (project.ok) {
+          applyProjectState(project.value, "Loaded project from share URL.");
+          window.history.replaceState(null, "", window.location.pathname);
+          setInitialLoadComplete(true);
+          return;
+        }
+        showNotice("error", project.message);
+      }
+
+      if (settings.restoreLastSession) {
+        const lastDocumentId = getLastDocumentId();
+        if (lastDocumentId) {
+          const lastDocument = await loadDocument(lastDocumentId);
+          if (lastDocument) {
+            setDocument(lastDocument);
+            selectFirstElement(lastDocument);
+            showNotice("success", "Restored your last local session.");
+          }
+        }
+      }
+      setInitialLoadComplete(true);
+    }
+
+    restoreInitialState();
+  }, [
+    applyProjectState,
+    initialLoadComplete,
+    selectFirstElement,
+    settings.restoreLastSession,
+    showNotice,
+  ]);
 
   useEffect(() => {
     refreshStoredDocuments();
   }, [refreshStoredDocuments]);
 
   useEffect(() => {
-    if (!supportsDocumentStorage()) {
+    if (
+      !initialLoadComplete ||
+      !settings.autosave ||
+      !supportsDocumentStorage()
+    ) {
       return;
     }
     const timeout = window.setTimeout(() => {
-      saveDocument(document).catch(() =>
-        showNotice("error", "Autosave failed in this browser."),
-      );
+      saveDocument(document)
+        .then(() => {
+          setLastDocumentId(document.id);
+          refreshStoredDocuments();
+        })
+        .catch(() => showNotice("error", "Autosave failed in this browser."));
     }, 800);
     return () => window.clearTimeout(timeout);
-  }, [document]);
+  }, [
+    document,
+    initialLoadComplete,
+    refreshStoredDocuments,
+    settings.autosave,
+    showNotice,
+  ]);
 
   useEffect(() => {
     if (!notice) {
@@ -104,12 +233,14 @@ export function EditorApp() {
     undoStack.current.push(document);
     redoStack.current = [];
     setDocument(touchDocument(next));
+    bumpHistoryVersion();
   }
 
   function commitSnapshot(snapshot: VectorDocument) {
     undoStack.current.push(snapshot);
     redoStack.current = [];
     setDocument((current) => touchDocument(current));
+    bumpHistoryVersion();
   }
 
   function handleUndo() {
@@ -119,8 +250,8 @@ export function EditorApp() {
     }
     redoStack.current.push(document);
     setDocument(previous);
-    setSelectedElementId(previous.elements[0]?.id ?? null);
-    setSelectedNode(null);
+    selectFirstElement(previous);
+    bumpHistoryVersion();
   }
 
   function handleRedo() {
@@ -130,27 +261,28 @@ export function EditorApp() {
     }
     undoStack.current.push(document);
     setDocument(next);
-    setSelectedElementId(next.elements[0]?.id ?? null);
-    setSelectedNode(null);
+    selectFirstElement(next);
+    bumpHistoryVersion();
   }
 
   function handleNewDocument() {
-    commitDocument(createDefaultDocument());
-    setSelectedElementId(null);
-    setSelectedNode(null);
+    const next = createDefaultDocument();
+    commitDocument(next);
+    selectFirstElement(next);
     setPenDraft(null);
     showNotice("success", "New local document created.");
   }
 
   function handleLoadDemo() {
-    const demo = createDefaultDocument();
-    commitDocument({ ...demo, title: "VectorForge demo" });
-    setSelectedElementId(demo.elements[0]?.id ?? null);
+    const demo = { ...createDefaultDocument(), title: "VectorForge demo" };
+    commitDocument(demo);
+    selectFirstElement(demo);
   }
 
   async function handleSave() {
     try {
       await saveDocument(document);
+      setLastDocumentId(document.id);
       await refreshStoredDocuments();
       showNotice("success", "Saved locally in IndexedDB.");
     } catch {
@@ -159,63 +291,128 @@ export function EditorApp() {
   }
 
   function handleExport() {
-    const svg = exportDocumentToSvg(document);
-    const filename = `${document.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "vectorforge"}.svg`;
-    downloadText(filename, svg, "image/svg+xml");
+    downloadText(
+      svgFilename(document),
+      exportDocumentToSvg(document),
+      "image/svg+xml",
+    );
     showNotice("success", "SVG exported.");
   }
 
   async function handleExportPng() {
-    try {
-      const png = await renderDocumentToPng(document);
-      const filename = `${document.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "vectorforge"}.png`;
-      downloadBlob(filename, png);
-      showNotice("success", "PNG exported.");
-    } catch {
-      showNotice("error", "PNG export failed.");
+    const png = await renderDocumentToPng(document);
+    if (!png.ok) {
+      showNotice("error", png.message);
+      return;
+    }
+    downloadBlob(pngFilename(document), png.value);
+    showNotice("success", "PNG exported.");
+  }
+
+  function handleExportProject() {
+    downloadText(
+      projectFilename(document),
+      serializeProjectFile(currentProjectState()),
+      "application/json",
+    );
+    showNotice("success", "Project file exported.");
+  }
+
+  async function handleCopySvg() {
+    const copied = await copyTextToClipboard(exportDocumentToSvg(document));
+    showNotice(
+      copied.ok ? "success" : "error",
+      copied.ok ? "SVG copied." : copied.message,
+    );
+  }
+
+  async function handleCopyShareUrl() {
+    const share = createProjectShareUrl(currentProjectState());
+    if (!share.ok) {
+      showNotice("error", share.message);
+      return;
+    }
+    const copied = await copyTextToClipboard(share.value);
+    showNotice(
+      copied.ok ? "success" : "error",
+      copied.ok ? "Share URL copied." : copied.message,
+    );
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
+  async function handleImportInput(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.currentTarget.value = "";
+    if (!files.length) {
+      return;
+    }
+    await applyImportResult(await importFiles(files));
+  }
+
+  async function applyImportResult(result: ImportResult) {
+    if (result.project) {
+      applyProjectState(result.project, "Imported VectorForge project.");
+      result.messages.forEach((message) => showNotice("info", message));
+      return;
+    }
+
+    if (result.documents.length) {
+      const nextDocument = combineImportedDocuments(result.documents);
+      commitDocument(nextDocument);
+      selectFirstElement(nextDocument);
+    }
+
+    if (result.palette.length) {
+      setPalette(mergePalette(palette, result.palette));
+    }
+
+    if (result.documents.length || result.palette.length) {
+      showNotice("success", result.messages.join(" ") || "Import completed.");
+    } else if (result.messages.length) {
+      showNotice("error", result.messages.join(" "));
     }
   }
 
-  async function handleSvgImport(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) {
+  async function handleReadClipboard() {
+    const imported = await readClipboard();
+    if (!imported.ok) {
+      showNotice("error", imported.message);
       return;
     }
-    try {
-      const imported = parseSvgDocument(await file.text());
-      commitDocument(imported);
-      setSelectedElementId(imported.elements[0]?.id ?? null);
-      showNotice(
-        "success",
-        `Imported ${imported.elements.length} SVG elements.`,
-      );
-    } catch (error) {
-      showNotice(
-        "error",
-        error instanceof Error ? error.message : "SVG import failed.",
+    await applyImportResult(imported.value);
+  }
+
+  async function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    if (event.dataTransfer.files.length) {
+      await applyImportResult(await importFiles(event.dataTransfer.files));
+      return;
+    }
+    if (event.dataTransfer.items.length) {
+      await applyImportResult(
+        await importClipboardItems(event.dataTransfer.items),
       );
     }
   }
 
-  async function handlePaletteImport(
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) {
+  async function handlePaste(event: React.ClipboardEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    if (target?.matches("input, textarea, select, [contenteditable='true']")) {
       return;
     }
-    try {
-      const colors = await extractPalette(file);
-      if (!colors.length) {
-        showNotice("error", "No useful palette was found in that image.");
-        return;
-      }
-      setPalette(colors);
-      showNotice("success", "Palette extracted with ColorThief.");
-    } catch {
-      showNotice("error", "Palette extraction failed.");
+    const imported = await importClipboardItems(event.clipboardData.items);
+    if (
+      imported.documents.length ||
+      imported.palette.length ||
+      imported.project ||
+      imported.messages.length
+    ) {
+      event.preventDefault();
+      await applyImportResult(imported);
     }
   }
 
@@ -243,7 +440,7 @@ export function EditorApp() {
     if (!selectedElementId) {
       return;
     }
-    setDocument(
+    commitDocument(
       updateElement(document, selectedElementId, (element) => ({
         ...element,
         name,
@@ -334,14 +531,38 @@ export function EditorApp() {
       return;
     }
     commitDocument(stored);
-    setSelectedElementId(stored.elements[0]?.id ?? null);
+    setLastDocumentId(stored.id);
+    selectFirstElement(stored);
     showNotice("success", "Loaded local document.");
   }
 
   async function handleDeleteStored(id: string) {
     await deleteStoredDocument(id);
+    if (document.id === id) {
+      clearLastDocumentId();
+    }
     await refreshStoredDocuments();
     showNotice("success", "Removed local save.");
+  }
+
+  async function handleClearAll() {
+    if (
+      !window.confirm(
+        "Clear all local saves, settings, and current unsaved work?",
+      )
+    ) {
+      return;
+    }
+    await clearStoredDocuments();
+    clearLastDocumentId();
+    applySettings(defaultEditorSettings);
+    const next = createDefaultDocument();
+    setDocument(next);
+    setPalette(defaultPalette);
+    selectFirstElement(next);
+    resetHistory();
+    await refreshStoredDocuments();
+    showNotice("success", "Local data cleared.");
   }
 
   useEffect(() => {
@@ -401,10 +622,20 @@ export function EditorApp() {
   });
 
   return (
-    <div className="app-shell">
+    <div
+      className={`app-shell${isDragging ? " dragging" : ""}`}
+      onDragOver={(event) => {
+        event.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+      onPaste={handlePaste}
+    >
       <TopBar onNewDocument={handleNewDocument} onLoadDemo={handleLoadDemo} />
       <main className="app-main">
         <Toolbar
+          key={historyVersion}
           tool={tool}
           canUndo={undoStack.current.length > 0}
           canRedo={redoStack.current.length > 0}
@@ -417,14 +648,15 @@ export function EditorApp() {
           onSave={handleSave}
           onExport={handleExport}
           onExportPng={handleExportPng}
-          onImportSvg={() => svgInputRef.current?.click()}
-          onImportPalette={() => paletteInputRef.current?.click()}
+          onImportSvg={() => importInputRef.current?.click()}
+          onImportPalette={() => importInputRef.current?.click()}
+          onReadClipboard={handleReadClipboard}
           onDelete={handleDeleteSelected}
         />
         <EditorCanvas
           document={document}
           tool={tool}
-          zoom={zoom}
+          zoom={settings.zoom}
           selectedElementId={selectedElementId}
           selectedNode={selectedNode}
           penDraft={penDraft}
@@ -438,12 +670,23 @@ export function EditorApp() {
           onShapeDraftChange={setShapeDraft}
         />
         <aside className="side-panel" aria-label="Inspector and layers">
+          {settings.showHelp ? (
+            <section className="panel-section">
+              <h2 className="panel-title">Workflow help</h2>
+              <p className="fine-print">
+                Import with the file button, drag files onto the workspace,
+                paste SVG/image content, or read the clipboard. Shortcuts: V
+                select, A nodes, P pen, R rectangle, E ellipse, Cmd/Ctrl+S save,
+                Cmd/Ctrl+D duplicate.
+              </p>
+            </section>
+          ) : null}
           <Inspector
             selectedElement={selectedElement}
             activeTool={tool}
             selectedNode={selectedNode}
             palette={palette}
-            zoom={zoom}
+            zoom={settings.zoom}
             onStyleChange={handleStyleChange}
             onRename={handleRename}
             onDuplicate={handleDuplicate}
@@ -454,8 +697,19 @@ export function EditorApp() {
             onSendBackward={() => handleReorder("backward")}
             onBringToFront={() => handleReorder("front")}
             onSendToBack={() => handleReorder("back")}
-            onZoomChange={setZoom}
+            onZoomChange={(zoom) => applySettings({ ...settings, zoom })}
             onApplySwatch={handleApplySwatch}
+          />
+          <ProjectPanel
+            settings={settings}
+            onSettingsChange={applySettings}
+            onExportProject={handleExportProject}
+            onCopySvg={handleCopySvg}
+            onCopyShareUrl={handleCopyShareUrl}
+            onPrint={handlePrint}
+            onReadClipboard={handleReadClipboard}
+            onResetDocument={handleNewDocument}
+            onClearAll={handleClearAll}
           />
           <LocalDocuments
             documents={storedDocuments}
@@ -470,7 +724,7 @@ export function EditorApp() {
           />
         </aside>
       </main>
-      <StatusBar document={document} zoom={zoom} geometry={geometry} />
+      <StatusBar document={document} zoom={settings.zoom} geometry={geometry} />
       {notice ? (
         <div
           className="toast"
@@ -480,22 +734,13 @@ export function EditorApp() {
         </div>
       ) : null}
       <input
-        ref={svgInputRef}
+        ref={importInputRef}
         className="hidden-input"
         type="file"
-        accept=".svg,image/svg+xml"
-        onChange={handleSvgImport}
+        multiple
+        accept=".svg,.json,.vectorforge.json,image/svg+xml,image/png,image/jpeg,image/webp"
+        onChange={handleImportInput}
       />
-      <input
-        ref={paletteInputRef}
-        className="hidden-input"
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        onChange={handlePaletteImport}
-      />
-      <span className="fine-print" hidden>
-        {buildInfo.pagesUrl}
-      </span>
     </div>
   );
 }
@@ -551,47 +796,26 @@ function LocalDocuments({
   );
 }
 
-function downloadText(filename: string, text: string, type: string) {
-  const blob = new Blob([text], { type });
-  downloadBlob(filename, blob);
-}
-
-function downloadBlob(filename: string, blob: Blob) {
-  const url = URL.createObjectURL(blob);
-  const anchor = window.document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-async function renderDocumentToPng(document: VectorDocument) {
-  const svg = exportDocumentToSvg(document);
-  const svgBlob = new Blob([svg], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(svgBlob);
-  const image = new Image();
-  image.decoding = "async";
-  image.src = url;
-  await image.decode();
-
-  const canvas = window.document.createElement("canvas");
-  canvas.width = document.width;
-  canvas.height = document.height;
-  const context = canvas.getContext("2d");
-  if (!context) {
-    URL.revokeObjectURL(url);
-    throw new Error("Canvas is unavailable.");
+function combineImportedDocuments(documents: VectorDocument[]) {
+  if (documents.length === 1) {
+    return documents[0];
   }
-  context.drawImage(image, 0, 0);
-  URL.revokeObjectURL(url);
-
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-      } else {
-        reject(new Error("Canvas export failed."));
-      }
-    }, "image/png");
+  const [first, ...rest] = documents;
+  return touchDocument({
+    ...first,
+    title: `Imported batch (${documents.length})`,
+    elements: documents.flatMap((document, documentIndex) =>
+      document.elements.map((element) => ({
+        ...element,
+        id: `${element.id}_${documentIndex}`,
+        name: `${document.title}: ${element.name}`,
+      })),
+    ),
+    width: Math.max(first.width, ...rest.map((document) => document.width)),
+    height: Math.max(first.height, ...rest.map((document) => document.height)),
   });
+}
+
+function mergePalette(current: string[], imported: string[]) {
+  return Array.from(new Set([...imported, ...current])).slice(0, 12);
 }

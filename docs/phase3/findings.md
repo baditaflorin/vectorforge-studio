@@ -58,3 +58,11 @@ A stranger should be able to:
 - No new vector engine, boolean path engine, or WASM geometry engine.
 - No visual polish beyond controls needed for usability.
 - No arbitrary URL import because Mode A cannot bypass CORS.
+
+## After Phase 3 Result
+
+- Required input rows moved to Green; URL/folder import remain Gray and are covered by ADR 0061.
+- Required output rows moved to Green; API/embed/code export remain Gray and are covered by ADR 0062.
+- Half-baked features were finished rather than hidden: autosave restore, shortcuts help, local reset, import completeness, and output completeness.
+- Core DRY findings moved to zero through import/export/project/settings/session/result modules.
+- The remaining meaningful debt is orchestration size in `EditorApp.tsx`; it no longer owns import/export schemas, but should eventually be split into hooks for keyboard/history/project orchestration.

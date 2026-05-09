@@ -1,5 +1,6 @@
 import {
   Circle,
+  ClipboardPaste,
   Download,
   FileInput,
   Image,
@@ -27,6 +28,7 @@ type Props = {
   onExportPng: () => void;
   onImportSvg: () => void;
   onImportPalette: () => void;
+  onReadClipboard: () => void;
   onDelete: () => void;
 };
 
@@ -50,6 +52,7 @@ export function Toolbar({
   onExportPng,
   onImportSvg,
   onImportPalette,
+  onReadClipboard,
   onDelete,
 }: Props) {
   return (
@@ -127,8 +130,8 @@ export function Toolbar({
         <button
           type="button"
           className="tool-button"
-          aria-label="Import SVG"
-          title="Import SVG"
+          aria-label="Import files"
+          title="Import files"
           onClick={onImportSvg}
         >
           <FileInput size={19} />
@@ -141,6 +144,15 @@ export function Toolbar({
           onClick={onImportPalette}
         >
           <Image size={19} />
+        </button>
+        <button
+          type="button"
+          className="tool-button"
+          aria-label="Read clipboard"
+          title="Read clipboard"
+          onClick={onReadClipboard}
+        >
+          <ClipboardPaste size={19} />
         </button>
       </div>
 

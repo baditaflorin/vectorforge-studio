@@ -60,3 +60,18 @@ Measurement date: 2026-05-09.
 - TODO/FIXME/XXX/HACK: 0
 - `any` / `@ts-ignore`: 0 in source
 - Real-user path smoke tests: 1
+
+## After Phase 3 Measurement
+
+Measurement date: 2026-05-09 after implementation.
+
+| Area                 | Before | After | Evidence                                                                   |
+| -------------------- | -----: | ----: | -------------------------------------------------------------------------- |
+| DRY findings         |      4 |     0 | Export, import, settings, session, project schema, and result modules.     |
+| SOLID findings       |      3 |     1 | Boundary work moved out of `EditorApp`; the app component is still large.  |
+| Dead-code findings   |      2 |     0 | `demoSvgText()` removed; `loadDocument()` now powers last-session restore. |
+| TODO/FIXME/XXX/HACK  |      0 |     0 | `rg` found no source/test occurrences.                                     |
+| `any` / `@ts-ignore` |      0 |     0 | `rg` found no source/test occurrences.                                     |
+| Real-user path tests |      1 |     5 | Unit coverage for import/export/project/settings plus Playwright import.   |
+
+Remaining accepted SOLID debt: `EditorApp.tsx` is still the orchestration root. It now delegates boundary parsing, export, project-file, storage-session, and settings work, but a later phase should split keyboard/history orchestration into hooks once behavior has settled.

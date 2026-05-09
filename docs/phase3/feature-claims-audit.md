@@ -21,3 +21,25 @@ Sources checked: README, ADRs 0001-0018, in-app button labels/status text.
 | Local-first Illustrator alternative                       |                Yellow | Good for SVG basics, but missing project state/share/paste/drop. | Finish completeness gaps and add limitations. |
 
 Before counts: Green 11, Yellow 4, Red 0.
+
+## After Phase 3
+
+| Claim                                                     | Status after Phase 3 | Evidence                                                                    |
+| --------------------------------------------------------- | -------------------: | --------------------------------------------------------------------------- |
+| Browser-native vector illustration studio                 |                Green | Runs fully on GitHub Pages with no runtime backend.                         |
+| SVG artboard with select/node/pen/rectangle/ellipse tools |                Green | Controls are wired and smoke-tested through real-data workflows.            |
+| Bezier anchors and handles                                |                Green | Node mode exposes anchors and handles.                                      |
+| Add/delete nodes and open/closed path toggles             |                Green | Inspector path controls remain implemented.                                 |
+| Layer ordering controls                                   |                Green | Arrange controls remain implemented.                                        |
+| SVG import/export                                         |                Green | Import router supports upload/drop/paste and project tests cover routing.   |
+| PNG export                                                |                Green | Export remains available through the toolbar.                               |
+| IndexedDB local saves                                     |                Green | Save, autosave, load, delete, restore, and clear-all are wired.             |
+| Offline-friendly PWA shell                                |                Green | Service worker remains registered; limitations are documented.              |
+| Lazy ColorThief palette extraction                        |                Green | Raster inputs route to lazy palette extraction.                             |
+| Worker geometry stats                                     |                Green | Comlink worker remains active for geometry stats.                           |
+| Keyboard shortcuts                                        |                Green | Workflow help lists the shipped shortcuts.                                  |
+| Public GitHub metadata/version/commit                     |                Green | Header/status keep repository, version, commit, stars, and support links.   |
+| GitHub and PayPal links                                   |                Green | Header links visible on the published app.                                  |
+| Local-first Illustrator alternative                       |                Green | README now states the practical scope and limitations without overclaiming. |
+
+After counts: Green 15, Yellow 0, Red 0.

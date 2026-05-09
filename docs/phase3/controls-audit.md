@@ -31,3 +31,37 @@ Status key: Green = label matches real end-to-end behavior. Yellow = works but i
 | Layers                     |                 Green | Selects elements.                                                                      | Keep.                                   |
 
 Before counts: Green 16, Yellow 9, Red 0.
+
+## After Phase 3
+
+| Control                    | Status after Phase 3 | Evidence                                                                        |
+| -------------------------- | -------------------: | ------------------------------------------------------------------------------- |
+| New                        |                Green | Creates a fresh local document and the Project panel offers a full local reset. |
+| Demo                       |                Green | Loads the demo document.                                                        |
+| Star on GitHub             |                Green | Opens the repository URL.                                                       |
+| PayPal                     |                Green | Opens the PayPal support URL.                                                   |
+| Select and move            |                Green | Selects and drags elements.                                                     |
+| Edit nodes and handles     |                Green | Node mode exposes anchors and handles.                                          |
+| Pen path                   |                Green | Workflow help documents finish/cancel behavior and shortcuts.                   |
+| Rectangle                  |                Green | Draws rectangles.                                                               |
+| Ellipse                    |                Green | Draws ellipses.                                                                 |
+| Undo/Redo                  |                Green | History changes now trigger toolbar rerendering.                                |
+| Save                       |                Green | Saves current document locally and records it as the last session.              |
+| Export SVG                 |                Green | Downloads SVG.                                                                  |
+| Export PNG                 |                Green | Downloads PNG.                                                                  |
+| Import files               |                Green | Accepts SVG, raster images, project JSON, and multi-file batches.               |
+| Read clipboard             |                Green | Reads SVG/HTML/text/image clipboard items when browser permission allows.       |
+| Delete selected            |                Green | Deletes selected element or selected node via keyboard.                         |
+| Selection name             |                Green | Rename goes through commit history and is undoable.                             |
+| Fill/stroke/stroke/opacity |                Green | Updates selected element style.                                                 |
+| Duplicate                  |                Green | Duplicates selected element.                                                    |
+| Arrange controls           |                Green | Reorders selected layer.                                                        |
+| Path Add/Delete/Open/Close |                Green | Works for paths.                                                                |
+| Zoom controls              |                Green | Zoom persists through settings/project export.                                  |
+| Palette swatches           |                Green | Apply fill color.                                                               |
+| Local save load/delete     |                Green | Load/delete plus clear-all reset are wired and visible.                         |
+| Settings checkboxes        |                Green | Autosave, last-session restore, and workflow help toggles persist.              |
+| Project export/copy/share  |                Green | Project panel exposes full-state export, SVG copy, share URL, and print.        |
+| Layers                     |                Green | Selects elements.                                                               |
+
+After counts: Green 27, Yellow 0, Red 0.

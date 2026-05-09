@@ -28,7 +28,7 @@ test-integration: ## Run integration tests.
 	npm run test
 
 smoke: ## Run the static-site smoke test.
-	./scripts/smoke.sh
+	bash scripts/smoke.sh
 
 lint: ## Run linters and type checks.
 	npm run lint

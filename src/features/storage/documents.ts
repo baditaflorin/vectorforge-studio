@@ -49,6 +49,11 @@ export async function deleteStoredDocument(id: string) {
   await database.delete(documentStore, id);
 }
 
+export async function clearStoredDocuments() {
+  const database = await getDatabase();
+  await database.clear(documentStore);
+}
+
 export function supportsDocumentStorage() {
   return typeof indexedDB !== "undefined";
 }

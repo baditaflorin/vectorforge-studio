@@ -24,3 +24,28 @@ Status key: Green = works end-to-end on real user data. Yellow = partially works
 | Hash/deep-link import            |                   Red | No state encoded in URL.                                                       | Finish for small documents.                                     |
 
 Before counts: Green 3, Yellow 3, Red 10, Gray 2.
+
+## After Phase 3
+
+| Input pathway                    | Status after Phase 3 | Evidence                                                                                   |
+| -------------------------------- | -------------------: | ------------------------------------------------------------------------------------------ |
+| SVG file upload                  |                Green | One or many SVG files route through `importFiles()` and merge into the workspace.          |
+| Raster image upload for palette  |                Green | PNG/JPEG/WebP files route through the same importer and extract swatches.                  |
+| Demo/sample document             |                Green | Demo remains available beside real data entry points.                                      |
+| Autosaved local document restore |                Green | Autosave writes the active document and records the last document id.                      |
+| Last session deep restore        |                Green | Reload restores the last saved document when the setting is enabled.                       |
+| Drag/drop SVG                    |                Green | Workspace drop handlers import SVG files.                                                  |
+| Drag/drop raster palette image   |                Green | Workspace drop handlers extract palettes from raster files.                                |
+| Paste SVG text                   |                Green | App-level paste handler imports pasted SVG text.                                           |
+| Paste inline SVG/HTML            |                Green | The importer extracts the first `<svg>...</svg>` fragment from HTML/text.                  |
+| Paste raster image               |                Green | Clipboard file items route through raster palette extraction.                              |
+| Clipboard read button            |                Green | Toolbar and Project panel expose permission-aware clipboard import with fallback notices.  |
+| Multi-file input                 |                Green | Single hidden file picker accepts mixed SVG/project/raster batches with partial messages.  |
+| Format detection                 |                Green | Import routing sniffs MIME type, extension, VectorForge JSON marker, and SVG markup.       |
+| Mobile picker                    |                Green | Browser-native file picker accepts SVG/project/raster inputs; camera URL import stays out. |
+| URL import                       |                 Gray | Mode A deliberately avoids CORS-brittle arbitrary URL import; users paste or upload files. |
+| Folder import                    |                 Gray | Out of scope for v1.                                                                       |
+| State file import                |                Green | `.vectorforge.json` project files restore document, palette, and settings.                 |
+| Hash/deep-link import            |                Green | Small project states load from `#project=` share URLs.                                     |
+
+After counts: Green 16, Yellow 0, Red 0, Gray 2.

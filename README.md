@@ -6,6 +6,8 @@
 
 Browser-native vector illustration studio with serious Bezier, color, and GPU-accelerated editing.
 
+Current release: v0.3.0.
+
 Live site:
 
 https://baditaflorin.github.io/vectorforge-studio/
@@ -28,18 +30,29 @@ editing without a subscription or runtime backend.
 
 ## Features
 
-- SVG artboard with select, node, pen, rectangle, and ellipse tools.
-- Bezier anchors and handles for path editing.
-- Add/delete path nodes and toggle open/closed paths.
-- Layer ordering controls for front/back movement.
-- SVG import/export.
-- PNG export rendered from the SVG document.
-- IndexedDB local saves and offline-friendly PWA shell.
-- Lazy ColorThief palette extraction from raster images.
-- Comlink Web Worker geometry stats for element, node, and path length metrics.
-- Keyboard shortcuts for tools, save, duplicate, undo/redo, delete, and layer order.
-- Public GitHub metadata, app version, and live commit shown in the status bar.
-- GitHub and PayPal links visible in the published app header.
+- Verified: SVG artboard with select, node, pen, rectangle, and ellipse tools.
+- Verified: Bezier anchors and handles for path editing.
+- Verified: add/delete path nodes and toggle open/closed paths.
+- Verified: layer ordering controls for front/back movement.
+- Verified: SVG import by picker, drag/drop, paste, and multi-file batches.
+- Verified: raster image palette extraction by picker, drag/drop, paste, and clipboard read.
+- Verified: SVG export, PNG artboard export, SVG copy-to-clipboard, print/PDF, and share URL.
+- Verified: versioned `.vectorforge.json` project export/import with document, palette, and settings.
+- Verified: IndexedDB save, autosave, last-session restore, local save delete, and full local reset.
+- Verified: persisted settings for zoom, autosave, last-session restore, and workflow help.
+- Verified: offline-friendly PWA shell with browser cache limitations documented in `docs/privacy.md`.
+- Verified: Comlink Web Worker geometry stats for element, node, and path length metrics.
+- Verified: keyboard shortcuts for tools, save, duplicate, undo/redo, delete, and layer order.
+- Verified: public GitHub metadata, app version, and live commit shown in the status bar.
+- Verified: GitHub repository link and PayPal support link visible in the published app header.
+
+## Limitations
+
+- No runtime backend, auth, or cross-device sync; project files/share URLs are the cross-device path.
+- No arbitrary URL import in v1 because GitHub Pages cannot bypass browser CORS for third-party files.
+- No Boolean/pathfinder engine or full Illustrator compatibility yet.
+- Share URLs are intentionally size-limited; use `.vectorforge.json` for larger documents.
+- The PWA cache is best-effort browser storage, not a backup. Export project files for important work.
 
 ## Quickstart
 

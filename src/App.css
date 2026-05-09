@@ -64,7 +64,8 @@
 .statusbar,
 .swatch-row,
 .tool-group,
-.inline-actions {
+.inline-actions,
+.check-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -307,6 +308,18 @@
   padding: 0;
 }
 
+.check-row {
+  min-height: 30px;
+  color: var(--ink);
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+.check-row input {
+  width: 16px;
+  height: 16px;
+}
+
 .layer-list {
   display: grid;
   gap: 7px;
@@ -388,6 +401,11 @@
   display: none;
 }
 
+.app-shell.dragging .workspace {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
 .empty-state {
   color: var(--muted);
   border: 1px dashed var(--line-strong);
@@ -412,5 +430,31 @@
 
   .topbar-actions {
     justify-content: flex-start;
+  }
+}
+
+@media print {
+  .topbar,
+  .toolbar,
+  .side-panel,
+  .statusbar,
+  .toast {
+    display: none !important;
+  }
+
+  .app-shell,
+  .app-main,
+  .workspace,
+  .canvas-stage {
+    display: block;
+    min-height: auto;
+    overflow: visible;
+    background: #ffffff;
+    padding: 0;
+  }
+
+  .artboard-wrap {
+    box-shadow: none;
+    transform: none !important;
   }
 }
